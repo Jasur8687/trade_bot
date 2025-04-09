@@ -1,21 +1,33 @@
 import os
+from telethon import TelegramClient, events
 from dotenv import load_dotenv
-import telebot
 
 load_dotenv()
 
-TOKEN = os.getenv("TOKEN")
-CHAT_ID = os.getenv("CHAT_ID")
+API_ID = int(os.getenv("API_ID"))
+API_HASH = os.getenv("API_HASH")
+PHONE = os.getenv("PHONE")  # если нужно
+PASSWORD = os.getenv("PASSWORD")  # если есть 2FA
+CHANNEL_ID = int(os.getenv("CHANNEL_ID"))  # например: -1001234567890
 
-bot = telebot.TeleBot(TOKEN)
+client = TelegramClient("save_id_session", API_ID, API_HASH)
 
-@bot.message_handler(func=lambda message: (
-    message.text is not None and 
-    message.text.strip().isdigit() and 
-    1 <= len(message.text.strip()) <= 9
-))
-def forward_postback_message(message):
-    # Если сообщение состоит только из цифр нужной длины, отправляем его в канал
-    bot.send_message(CHAT_ID, message.text.strip())
+@client.on(events.NewMessage)
+async def handler(event):
+    text = event.raw_text.strip()
+    
+    if text.isdigit() and 1 <= len(text) <= 9:
+        try:
+            await client.send_message(CHANNEL_ID, text)
+            await event.respond("✅ ID сохранён в канал.")
+        except Exception as e:
+            await event.respond(f"❌ Ошибка при отправке в канал: {e}")
 
-bot.infinity_polling(timeout=60, long_polling_timeout=30)
+async def main():
+    await client.start(password=PASSWORD)
+    print("✅ Клиент запущен!")
+    await client.run_until_disconnected()
+
+if __name__ == "__main__":
+    import asyncio
+    asyncio.run(main())
